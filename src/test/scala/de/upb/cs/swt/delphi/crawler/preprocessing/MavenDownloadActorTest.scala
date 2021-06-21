@@ -45,7 +45,7 @@ class MavenDownloadActorTest extends TestKit(ActorSystem("DownloadActor"))
       val mavenIdentifier = new MavenIdentifier("https://repo1.maven.org/maven2/", "junit", "junit", "4.12")
       val downloadActor = system.actorOf(MavenDownloadActor.props)
 
-      implicit val timeout = Timeout(10 seconds)
+      implicit val timeout = Timeout(5 seconds)
       implicit val ec = system.dispatcher
 
       val f = downloadActor ? mavenIdentifier

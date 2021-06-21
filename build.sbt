@@ -116,3 +116,5 @@ libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "25.1-jre",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.10.2"
 )
+
+libraryDependencies += "org.neo4j.driver" % "neo4j-java-driver" % "4.3.1"

@@ -15,9 +15,10 @@
 // limitations under the License.
 
 package de.upb.cs.swt.delphi.crawler.processing
+import com.typesafe.config.ConfigValueFactory
+
 import java.net.URL
 import java.util.jar.JarInputStream
-
 import de.upb.cs.swt.delphi.crawler.preprocessing.MavenArtifact
 import de.upb.cs.swt.delphi.crawler.tools.ClassStreamReader
 import org.opalj.br.analyses.Project
@@ -31,5 +32,14 @@ trait OPALFunctionality {
       new JarInputStream(m.jarFile.is))
     Try(m.jarFile.is.close())
     project
+  }
+
+  def asLibrary[T](project: Project[URL])(implicit handler: Project[URL] => T): T ={
+    handler(Project.recreate(
+      project,
+      project.config.withValue("org.opalj.br.analyses.cg.InitialEntryPointsKey.analysis",
+        ConfigValueFactory.fromAnyRef("org.opalj.br.analyses.cg.LibraryEntryPointsFinder")),
+      true
+    ))
   }
 }
