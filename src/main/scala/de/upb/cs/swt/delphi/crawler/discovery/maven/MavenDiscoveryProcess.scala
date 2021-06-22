@@ -29,10 +29,12 @@ import de.upb.cs.swt.delphi.crawler.control.Phase
 import de.upb.cs.swt.delphi.crawler.control.Phase.Phase
 import de.upb.cs.swt.delphi.crawler.tools.ActorStreamIntegrationSignals.{Ack, StreamCompleted, StreamFailure, StreamInitialized}
 import de.upb.cs.swt.delphi.crawler.preprocessing.{MavenArtifact, MavenDownloadActor}
-import de.upb.cs.swt.delphi.crawler.processing.{HermesActor, HermesResults}
-import de.upb.cs.swt.delphi.crawler.storage.ArtifactExistsQuery
+import de.upb.cs.swt.delphi.crawler.processing.{CallGraphActor, HermesActor, HermesResults, OpalProjectInitialisingActor}
+import de.upb.cs.swt.delphi.crawler.storage.{ArtifactExistsQuery, CallGraphStorageActor}
 import de.upb.cs.swt.delphi.crawler.tools.NotYetImplementedException
+import org.opalj.br.analyses.Project
 
+import java.net.URL
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
@@ -47,7 +49,7 @@ import scala.util.{Failure, Success, Try}
   * @param system        The currently used actor system (for logging)
   *
   */
-class MavenDiscoveryProcess(configuration: Configuration, elasticPool: ActorRef)
+class MavenDiscoveryProcess(configuration: Configuration, elasticPool: ActorRef, graphDbPool: ActorRef)
                            (implicit system: ActorSystem)
   extends de.upb.cs.swt.delphi.crawler.control.Process[Long]
     with IndexProcessing
@@ -58,6 +60,12 @@ class MavenDiscoveryProcess(configuration: Configuration, elasticPool: ActorRef)
 
   val downloaderPool = system.actorOf(SmallestMailboxPool(8).props(MavenDownloadActor.props))
   val hermesPool = system.actorOf(SmallestMailboxPool(configuration.hermesActorPoolSize).props(HermesActor.props()))
+
+  val projectInitializerPool: ActorRef =
+    system.actorOf(SmallestMailboxPool(configuration.hermesActorPoolSize).props(OpalProjectInitialisingActor.props()))
+
+  val cgCreatorPool: ActorRef =
+    system.actorOf(SmallestMailboxPool(configuration.hermesActorPoolSize).props(CallGraphActor.props(graphDbPool)))
 
   override def phase: Phase = Phase.Discovery
 
@@ -92,7 +100,14 @@ class MavenDiscoveryProcess(configuration: Configuration, elasticPool: ActorRef)
 
     val finalizer =
       preprocessing
-        .mapAsync(configuration.hermesActorPoolSize)(artifact => (hermesPool ? artifact).mapTo[Try[HermesResults]])
+        // Initialize OPAL project for all artifacts
+        .mapAsync(configuration.hermesActorPoolSize)(artifact => (projectInitializerPool ? artifact).mapTo[Try[(MavenArtifact, Project[URL])]])
+        .filter(_.isSuccess)
+        .map(_.get)
+        // Generate Callgraph from OPAL project, do not do anything with results (yet)
+        .alsoTo(createSinkFromActorRef[(MavenArtifact, Project[URL])](cgCreatorPool))
+        // Map OPAL projcet to HermesResults, save results in Elastic
+        .mapAsync(configuration.hermesActorPoolSize)(artifactProjectTuple => (hermesPool ? artifactProjectTuple).mapTo[Try[HermesResults]])
         .filter(results => results.isSuccess)
         .map(results => results.get)
         .alsoTo(createSinkFromActorRef[HermesResults](elasticPool))

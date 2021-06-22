@@ -28,11 +28,11 @@ import scala.util.Try
 class HermesActor() extends Actor with ActorLogging with OPALFunctionality with HermesFunctionality {
 
   def receive: PartialFunction[Any, Unit] = {
-    case m : MavenArtifact => {
+    case (m : MavenArtifact, p:Project[URL]) => {
       log.info(s"Starting analysis for $m")
 
       val hermesResult = Try {
-        computeHermesResult(m, reifyProject(m))
+        computeHermesResult(m, p)
       }
 
       sender() ! hermesResult

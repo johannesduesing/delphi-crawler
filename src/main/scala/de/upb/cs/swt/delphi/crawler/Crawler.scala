@@ -25,7 +25,7 @@ import de.upb.cs.swt.delphi.crawler.discovery.maven.MavenDiscoveryProcess
 import de.upb.cs.swt.delphi.crawler.instancemanagement.InstanceRegistry
 import de.upb.cs.swt.delphi.crawler.preprocessing.PreprocessingDispatchActor
 import de.upb.cs.swt.delphi.crawler.processing.{HermesActor, HermesAnalyzer, ProcessingDispatchActor}
-import de.upb.cs.swt.delphi.crawler.storage.ElasticActor
+import de.upb.cs.swt.delphi.crawler.storage.{CallGraphStorageActor, ElasticActor}
 import de.upb.cs.swt.delphi.crawler.tools.OPALLogAdapter
 import org.opalj.log.{GlobalLogContext, OPALLogger}
 
@@ -71,6 +71,9 @@ object Crawler extends App with AppLogging {
   val elasticPool = system.actorOf(RoundRobinPool(configuration.elasticActorPoolSize)
     .props(ElasticActor.props(ElasticClient(configuration.elasticsearchClientUri))))
 
+  val neo4jStoragePool = system.actorOf(RoundRobinPool(configuration.elasticActorPoolSize)
+    .props(CallGraphStorageActor.props(CallGraphStorageActor.initDriver(configuration))))
+
   /*
   val hermesPool = system.actorOf(SmallestMailboxPool(configuration.hermesActorPoolSize).props(HermesActor.props()))
   val processingDispatchActor = system.actorOf(ProcessingDispatchActor.props(hermesPool))
@@ -79,7 +82,7 @@ object Crawler extends App with AppLogging {
 */
 
   val processScheduler = system.actorOf(ProcessScheduler.props)
-  processScheduler ! ProcessScheduler.Enqueue(new MavenDiscoveryProcess(configuration, elasticPool))
+  processScheduler ! ProcessScheduler.Enqueue(new MavenDiscoveryProcess(configuration, elasticPool, neo4jStoragePool))
 
 
 }

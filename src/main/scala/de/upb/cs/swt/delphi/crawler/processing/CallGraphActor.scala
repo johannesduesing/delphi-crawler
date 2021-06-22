@@ -32,7 +32,7 @@ import scala.util.{Failure, Success, Try}
 class CallGraphActor(storageActor: ActorRef) extends Actor with ActorLogging with OPALFunctionality {
 
   override def receive: Receive = {
-    case (artifact: MavenArtifact, project: Project[URL]) => asLibrary(project){ libProject =>
+    case (artifact: MavenArtifact, libProject: Project[URL]) =>
       Try{
         log.info(s"Generating call graph for artifact: ${artifact.identifier}..")
         libProject.get(XTACallGraphKey)
@@ -41,10 +41,10 @@ class CallGraphActor(storageActor: ActorRef) extends Actor with ActorLogging wit
           log.info(s"Successfully processed callgraph for artifact ${artifact.identifier}")
 
           implicit val timeout: Timeout = Timeout(15.minutes)
-          Await.result(storageActor ? (artifact, theCG, project), timeout.duration) match {
+          Await.result(storageActor ? (artifact, theCG, libProject), timeout.duration) match {
             case Success(storageResponse) =>
               log.info(s"Successfully stored CG information for ${artifact.identifier}")
-              sender() ! Success(artifact)
+              sender() ! Success((artifact, libProject))
             case Failure(ex) =>
               log.error("Invalid response from storage actor")
               sender() ! Failure(ex)
@@ -56,9 +56,8 @@ class CallGraphActor(storageActor: ActorRef) extends Actor with ActorLogging wit
           log.error(s"Failed to generate call graph for artifact ${artifact.identifier}", ex)
           sender() ! Failure(ex)
       }
-
-    }
   }
+
 }
 
 object CallGraphActor {

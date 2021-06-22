@@ -55,7 +55,7 @@ class CallGraphActorTest extends TestKit(ActorSystem("CGActor"))
       }
       val cgActor = system.actorOf(CallGraphActor.props(storageDummy))
 
-      val project = reifyProject(mavenArtifact)
+      val project = reifyProject(mavenArtifact, true)
 
       val cgFuture = cgActor ? (mavenArtifact,  project)
       val result = Await.result(cgFuture, timeout.duration)
@@ -64,28 +64,6 @@ class CallGraphActorTest extends TestKit(ActorSystem("CGActor"))
       val content = result.asInstanceOf[Success[MavenArtifact]]
     }
 
-    "successfully store callgraphs" in {
-      implicit val timeout: Timeout = Timeout(15.minutes)
-      implicit val ec: ExecutionContext = system.dispatcher
-
-      val mavenIdentifier =
-        new MavenIdentifier("https://repo1.maven.org/maven2/", "org.neo4j", "neo4j-kernel", "4.3.0")
-
-      val mavenArtifact = downloadArtifact(mavenIdentifier)
-
-      val (storageActor, driver) = realStorageActor()
-      val cgActor = system.actorOf(CallGraphActor.props(storageActor))
-
-      val project = reifyProject(mavenArtifact)
-
-      val cgFuture = cgActor ? (mavenArtifact,  project)
-      val result = Await.result(cgFuture, timeout.duration)
-
-      driver.close()
-
-      assert(result.isInstanceOf[Success[_]])
-      val content = result.asInstanceOf[Success[MavenArtifact]]
-    }
   }
 
   private def dummyStorageActor[T](implicit handler: (MavenArtifact, CallGraph) => T): ActorRef = {
@@ -97,11 +75,6 @@ class CallGraphActorTest extends TestKit(ActorSystem("CGActor"))
           ???
       }
     }))
-  }
-
-  private def realStorageActor(): (ActorRef, Driver) = {
-    val driver = GraphDatabase.driver("bolt://localhost:7687", AuthTokens.basic("neo4j", "=Ue3y!H"))
-    (system.actorOf(CallGraphStorageActor.props(driver)), driver)
   }
 
   private def downloadArtifact(identifier: MavenIdentifier)

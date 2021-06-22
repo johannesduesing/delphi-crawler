@@ -19,9 +19,8 @@ package de.upb.cs.swt.delphi.crawler.tools
 import java.io._
 import java.net.URL
 import java.util.jar.{JarEntry, JarInputStream}
-
-import com.typesafe.config.Config
-import org.opalj.br.ClassFile
+import com.typesafe.config.{Config, ConfigValueFactory}
+import org.opalj.br.{BaseConfig, ClassFile}
 import org.opalj.br.analyses.Project
 import org.opalj.br.reader.Java8LibraryFramework
 import org.opalj.log.GlobalLogContext
@@ -86,8 +85,13 @@ trait ClassStreamReader {
     * @param jarInputStream An input stream for the JAR file
     * @return An OPAL Project including the JRE as library classes
     */
-  def createProject(source: URL, jarInputStream: JarInputStream): Project[URL] = {
-    val config: Config = org.opalj.br.BaseConfig
+  def createProject(source: URL, jarInputStream: JarInputStream, projectIsLibrary: Boolean): Project[URL] = {
+    val config: Config = if(projectIsLibrary) {
+      BaseConfig.withValue("org.opalj.br.analyses.cg.InitialEntryPointsKey.analysis",
+        ConfigValueFactory.fromAnyRef("org.opalj.br.analyses.cg.LibraryEntryPointsFinder"))
+    } else {
+      BaseConfig
+    }
 
     val projectClasses: Traversable[(ClassFile, URL)] = readClassFiles(jarInputStream).map { case (classFile, _) => (classFile, source) }
     val libraryClasses: Traversable[(ClassFile, URL)] = readClassFiles(new JarInputStream

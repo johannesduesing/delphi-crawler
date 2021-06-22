@@ -74,7 +74,7 @@ class MavenEdgeMappingActor(configuration: Configuration) extends Actor with Act
 
   def loadProject(identifier: MavenIdentifier) = {
     val jarFile = new MavenDownloader(identifier).downloadJar()
-    val project = new ClassStreamReader {}.createProject(jarFile.url, new JarInputStream(jarFile.is))
+    val project = new ClassStreamReader {}.createProject(jarFile.url, new JarInputStream(jarFile.is), true)
     project
   }
 

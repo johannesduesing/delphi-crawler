@@ -35,7 +35,7 @@ class OpalActor(configuration: Configuration) extends Actor with ActorLogging{
   }
 
   private def findCalls(is: InputStream, url: URL) = {
-    val p = new ClassStreamReader {}.createProject(url, new JarInputStream(is))
+    val p = new ClassStreamReader {}.createProject(url, new JarInputStream(is), true)
     is.close()
 
     val cg: CallGraph = p.get(XTACallGraphKey)

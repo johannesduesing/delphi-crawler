@@ -49,7 +49,7 @@ class ClassStreamReaderTest extends FlatSpec with Matchers with BeforeAndAfter {
     val fis = file.inputStream()
     val jis = new JarInputStream(new BufferedInputStream(fis))
 
-    val p = new ClassStreamReader {}.createProject(file.toURL, jis)
+    val p = new ClassStreamReader {}.createProject(file.toURL, jis, true)
 
     p shouldBe a [Project[_]]
     p.projectClassFilesCount should be (23)
@@ -81,7 +81,7 @@ class ClassStreamReaderTest extends FlatSpec with Matchers with BeforeAndAfter {
     val bufferedInputStream = new BufferedInputStream(conn.getInputStream)
     val jis = new JarInputStream(bufferedInputStream)
 
-    val p = new ClassStreamReader {}.createProject(target, jis)
+    val p = new ClassStreamReader {}.createProject(target, jis, true)
 
     p shouldBe a [Project[_]]
     p.projectClassFilesCount should be (23)
@@ -95,7 +95,7 @@ class ClassStreamReaderTest extends FlatSpec with Matchers with BeforeAndAfter {
 
     val jis = new JarInputStream(fis)
 
-    val p = new ClassStreamReader {}.createProject(target.toURL, jis)
+    val p = new ClassStreamReader {}.createProject(target.toURL, jis, true)
 
     p shouldBe a [Project[_]]
     p.projectClassFilesCount should be (21)

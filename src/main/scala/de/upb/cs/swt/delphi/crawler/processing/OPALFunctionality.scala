@@ -27,19 +27,11 @@ import scala.util.Try
 
 trait OPALFunctionality {
 
-  def reifyProject(m: MavenArtifact): Project[URL] = {
+  def reifyProject(m: MavenArtifact, loadAsLibraryProject: Boolean): Project[URL] = {
     val project = new ClassStreamReader {}.createProject(m.identifier.toJarLocation.toURL,
-      new JarInputStream(m.jarFile.is))
+      new JarInputStream(m.jarFile.is), loadAsLibraryProject)
     Try(m.jarFile.is.close())
     project
   }
 
-  def asLibrary[T](project: Project[URL])(implicit handler: Project[URL] => T): T ={
-    handler(Project.recreate(
-      project,
-      project.config.withValue("org.opalj.br.analyses.cg.InitialEntryPointsKey.analysis",
-        ConfigValueFactory.fromAnyRef("org.opalj.br.analyses.cg.LibraryEntryPointsFinder")),
-      true
-    ))
-  }
 }

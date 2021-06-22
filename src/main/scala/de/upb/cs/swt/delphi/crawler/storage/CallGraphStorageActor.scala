@@ -16,10 +16,11 @@
 package de.upb.cs.swt.delphi.crawler.storage
 
 import akka.actor.{Actor, ActorLogging, Props}
+import de.upb.cs.swt.delphi.crawler.Configuration
 import de.upb.cs.swt.delphi.crawler.preprocessing.MavenArtifact
 import de.upb.cs.swt.delphi.crawler.processing.CallGraphActor
 import org.neo4j.driver.Values.parameters
-import org.neo4j.driver.{Driver, Session}
+import org.neo4j.driver.{AuthTokens, Driver, GraphDatabase, Session}
 import org.opalj.br.DeclaredMethod
 import org.opalj.br.analyses.Project
 import org.opalj.tac.cg.CallGraph
@@ -112,4 +113,7 @@ class CallGraphStorageActor(neo4jDriver: Driver) extends Actor with ActorLogging
 
 object  CallGraphStorageActor {
   def props(driver: Driver): Props = Props(new CallGraphStorageActor(driver))
+
+  def initDriver(configuration: Configuration): Driver =
+    GraphDatabase.driver("", AuthTokens.basic(???,???))
 }

@@ -35,7 +35,7 @@ class HermesTest extends FlatSpec with Matchers with BeforeAndAfterAll {
     val fis = file.inputStream()
     val jis = new JarInputStream(new BufferedInputStream(fis))
 
-    val p = new ClassStreamReader {}.createProject(file.toURL, jis)
+    val p = new ClassStreamReader {}.createProject(file.toURL, jis, true)
 
     val result = new HermesAnalyzer(p).analyzeProject()
     for {
