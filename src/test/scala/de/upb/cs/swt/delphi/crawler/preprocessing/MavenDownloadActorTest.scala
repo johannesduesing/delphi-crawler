@@ -27,7 +27,6 @@ import scala.concurrent.duration._
 import de.upb.cs.swt.delphi.crawler.preprocessing.Common._
 
 import scala.concurrent.Await
-import scala.util.{Success, Try}
 
 /**
   * @author Hariharan.
@@ -45,19 +44,26 @@ class MavenDownloadActorTest extends TestKit(ActorSystem("DownloadActor"))
       val mavenIdentifier = new MavenIdentifier("https://repo1.maven.org/maven2/", "junit", "junit", "4.12")
       val downloadActor = system.actorOf(MavenDownloadActor.props)
 
-      implicit val timeout = Timeout(5 seconds)
-      implicit val ec = system.dispatcher
+      implicit val timeout: Timeout = Timeout(10 seconds)
 
       val f = downloadActor ? mavenIdentifier
 
       val msg = Await.result(f, 10 seconds)
 
-      assert(msg.isInstanceOf[Success[MavenArtifact]])
-      val artifact = msg.asInstanceOf[Success[MavenArtifact]].get
-      checkJar(artifact.jarFile.is)
+      assert(msg.isInstanceOf[MavenDownloadActorResponse])
+      val response = msg.asInstanceOf[MavenDownloadActorResponse]
+
+      assert(!response.pomDownloadFailed)
+      assert(!response.dateParsingFailed)
+      assert(!response.jarDownloadFailed)
+      assert(response.artifact.isDefined)
+
+      val artifact = response.artifact.get
+      checkJar(artifact.jarFile.get.is)
       checkPom(artifact.pomFile.is)
 
-
+      assert(artifact.metadata.isEmpty)
+      assert(artifact.publicationDate.isDefined && artifact.publicationDate.get != null)
     }
   }
 }

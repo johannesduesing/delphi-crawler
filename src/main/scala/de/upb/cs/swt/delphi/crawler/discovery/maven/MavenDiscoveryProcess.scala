@@ -28,9 +28,9 @@ import de.upb.cs.swt.delphi.crawler.{AppLogging, Configuration}
 import de.upb.cs.swt.delphi.crawler.control.Phase
 import de.upb.cs.swt.delphi.crawler.control.Phase.Phase
 import de.upb.cs.swt.delphi.crawler.tools.ActorStreamIntegrationSignals.{Ack, StreamCompleted, StreamFailure, StreamInitialized}
-import de.upb.cs.swt.delphi.crawler.preprocessing.{MavenArtifact, MavenDownloadActor}
-import de.upb.cs.swt.delphi.crawler.processing.{CallGraphActor, HermesActor, HermesResults, OpalProjectInitialisingActor}
 import de.upb.cs.swt.delphi.crawler.storage.{ArtifactExistsQuery, CallGraphStorageActor}
+import de.upb.cs.swt.delphi.crawler.preprocessing.{MavenArtifact, MavenArtifactMetadata, MavenDownloadActor, MavenDownloadActorResponse}
+import de.upb.cs.swt.delphi.crawler.processing.{CallGraphActor, OpalProjectInitialisingActor, HermesActor, HermesActorResponse, HermesResults, PomFileReadActor, PomFileReadActorResponse, ProcessingFailureStorageActor}
 import de.upb.cs.swt.delphi.crawler.tools.NotYetImplementedException
 import org.opalj.br.analyses.Project
 
@@ -59,6 +59,8 @@ class MavenDiscoveryProcess(configuration: Configuration, elasticPool: ActorRef,
   private val seen = mutable.HashSet[MavenIdentifier]()
 
   val downloaderPool = system.actorOf(SmallestMailboxPool(8).props(MavenDownloadActor.props))
+  val pomReaderPool = system.actorOf(SmallestMailboxPool(8).props(PomFileReadActor.props(configuration)))
+  val errorHandlerPool = system.actorOf(SmallestMailboxPool(8).props(ProcessingFailureStorageActor.props(elasticPool)))
   val hermesPool = system.actorOf(SmallestMailboxPool(configuration.hermesActorPoolSize).props(HermesActor.props()))
 
   val projectInitializerPool: ActorRef =
@@ -94,12 +96,18 @@ class MavenDiscoveryProcess(configuration: Configuration, elasticPool: ActorRef,
     val preprocessing =
       filteredSource
         .alsoTo(createSinkFromActorRef[MavenIdentifier](elasticPool))
-        .mapAsync(8)(identifier => (downloaderPool ? identifier).mapTo[Try[MavenArtifact]])
-        .filter(artifact => artifact.isSuccess)
-        .map(artifact => artifact.get)
+        .mapAsync(8)(identifier => (downloaderPool ? identifier).mapTo[MavenDownloadActorResponse])
+        .alsoTo(createSinkFromActorRef[MavenDownloadActorResponse](errorHandlerPool))
+        .filter(!_.pomDownloadFailed)
 
     val finalizer =
       preprocessing
+        // Read POM file for artifact
+        .mapAsync(8)(downloadResponse => (pomReaderPool ? downloadResponse).mapTo[PomFileReadActorResponse])
+        .alsoTo(createSinkFromActorRef[PomFileReadActorResponse](errorHandlerPool))
+        .alsoTo(createSinkFromActorRef[PomFileReadActorResponse](elasticPool))
+        .filter(response => !response.jarDownloadFailed)
+        .map(_.artifact)
         // Initialize OPAL project for all artifacts
         .mapAsync(configuration.hermesActorPoolSize)(artifact => (projectInitializerPool ? artifact).mapTo[Try[(MavenArtifact, Project[URL])]])
         .filter(_.isSuccess)
@@ -107,9 +115,10 @@ class MavenDiscoveryProcess(configuration: Configuration, elasticPool: ActorRef,
         // Generate Callgraph from OPAL project, do not do anything with results (yet)
         .alsoTo(createSinkFromActorRef[(MavenArtifact, Project[URL])](cgCreatorPool))
         // Map OPAL projcet to HermesResults, save results in Elastic
-        .mapAsync(configuration.hermesActorPoolSize)(artifactProjectTuple => (hermesPool ? artifactProjectTuple).mapTo[Try[HermesResults]])
-        .filter(results => results.isSuccess)
-        .map(results => results.get)
+        .mapAsync(configuration.hermesActorPoolSize)(artifactProjectTuple => (hermesPool ? artifactProjectTuple).mapTo[HermesActorResponse])
+        .alsoTo(createSinkFromActorRef[HermesActorResponse](errorHandlerPool))
+        .filter(_.result.isSuccess)
+        .map(_.result.get)
         .alsoTo(createSinkFromActorRef[HermesResults](elasticPool))
         .to(Sink.ignore)
         .run()

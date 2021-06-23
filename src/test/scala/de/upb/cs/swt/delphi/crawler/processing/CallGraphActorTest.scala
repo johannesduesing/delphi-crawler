@@ -21,7 +21,7 @@ import org.scalatest.{Matchers, WordSpecLike}
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import de.upb.cs.swt.delphi.crawler.discovery.maven.MavenIdentifier
-import de.upb.cs.swt.delphi.crawler.preprocessing.{MavenArtifact, MavenDownloadActor}
+import de.upb.cs.swt.delphi.crawler.preprocessing.{MavenArtifact, MavenDownloadActor, MavenDownloadActorResponse}
 import de.upb.cs.swt.delphi.crawler.storage.CallGraphStorageActor
 import org.neo4j.driver.{AuthTokens, Driver, GraphDatabase}
 import org.opalj.br.DeclaredMethod
@@ -86,7 +86,9 @@ class CallGraphActorTest extends TestKit(ActorSystem("CGActor"))
 
     val msg = Await.result(f, timeout.duration)
 
-    assert(msg.isInstanceOf[Success[MavenArtifact]])
-    msg.asInstanceOf[Success[MavenArtifact]].get
+    assert(msg.isInstanceOf[MavenDownloadActorResponse])
+    val response = msg.asInstanceOf[MavenDownloadActorResponse]
+    assert(!response.jarDownloadFailed && !response.pomDownloadFailed && response.artifact.isDefined)
+    response.artifact.get
   }
 }

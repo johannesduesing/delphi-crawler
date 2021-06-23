@@ -29,8 +29,8 @@ trait OPALFunctionality {
 
   def reifyProject(m: MavenArtifact, loadAsLibraryProject: Boolean): Project[URL] = {
     val project = new ClassStreamReader {}.createProject(m.identifier.toJarLocation.toURL,
-      new JarInputStream(m.jarFile.is), loadAsLibraryProject)
-    Try(m.jarFile.is.close())
+      new JarInputStream(m.jarFile.get.is), loadAsLibraryProject)
+    Try(m.jarFile.get.is.close())
     project
   }
 
