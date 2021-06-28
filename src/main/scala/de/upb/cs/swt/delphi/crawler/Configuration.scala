@@ -79,11 +79,16 @@ class Configuration {
   val limit : Int = 100
   val throttle : Throttle = Throttle(5, 1 second, 5, ThrottleMode.shaping)
 
+  val graphDatabaseUrl: String = "bolt://localhost:7687"
+  val graphDatabaseUser: String = "neo4j"
+  val graphDatabasePassword: String = "<changeme>"
+
   val tempFileStorage : String = "temp/"
 
   val elasticActorPoolSize : Int = 4
   val callGraphStreamPoolSize : Int = 4
   val hermesActorPoolSize: Int = 2
+
 
 
 

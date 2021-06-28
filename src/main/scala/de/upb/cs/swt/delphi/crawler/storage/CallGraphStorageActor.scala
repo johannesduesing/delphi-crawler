@@ -115,5 +115,5 @@ object  CallGraphStorageActor {
   def props(driver: Driver): Props = Props(new CallGraphStorageActor(driver))
 
   def initDriver(configuration: Configuration): Driver =
-    GraphDatabase.driver("", AuthTokens.basic(???,???))
+    GraphDatabase.driver(configuration.graphDatabaseUrl, AuthTokens.basic(configuration.graphDatabaseUser,configuration.graphDatabasePassword))
 }
