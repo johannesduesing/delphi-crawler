@@ -18,7 +18,7 @@ package de.upb.cs.swt.delphi.crawler.storage
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.event.LoggingAdapter
-import com.sksamuel.elastic4s.http.ElasticClient
+import com.sksamuel.elastic4s.http.{ElasticClient, RequestFailure, RequestSuccess}
 import de.upb.cs.swt.delphi.crawler.Identifier
 import de.upb.cs.swt.delphi.crawler.discovery.git.GitIdentifier
 import de.upb.cs.swt.delphi.crawler.tools.ActorStreamIntegrationSignals.{Ack, StreamCompleted, StreamFailure, StreamInitialized}
@@ -45,11 +45,21 @@ class ElasticActor(client: ElasticClient) extends Actor with ActorLogging with A
       log.error(ex, s"Stream failed!")
     case m : MavenIdentifier => {
       log.info(s"pushing $m")
-      store(m)
+      store(m) match {
+        case RequestFailure(status, _, _, error) =>
+          log.error(s"Failed to store identifier, ES returned $status due to ${error.reason}")
+        case _ =>
+      }
       sender() ! Ack
     }
     case PomFileReadActorResponse(artifact,_,false,_) => {
-      store(artifact)
+      store(artifact) match {
+        case Some(RequestFailure(status, _, _, error)) =>
+          log.error(s"Failed to store POM file contents, ES returned $status due to ${error.reason}")
+        case None =>
+          log.error(s"Failed to store POM file contents, identifier not found in ES.")
+        case _ =>
+      }
       sender() ! Ack
     }
     case g : GitIdentifier => {
@@ -57,7 +67,14 @@ class ElasticActor(client: ElasticClient) extends Actor with ActorLogging with A
       sender() ! Ack
     }
     case h : HermesResults => {
-      store(h)
+      store(h) match {
+        case Some(RequestFailure(status, _, _, error)) =>
+          log.error(s"Failed to store Hermes results, ES returned $status due to ${error.reason}")
+        case None =>
+          log.error(s"Failed to store Hermes results, identifier not found in ES.")
+        case _ =>
+
+      }
       sender() ! Ack
     }
     case e : MavenProcessingError => {

@@ -19,6 +19,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import de.upb.cs.swt.delphi.crawler.preprocessing.MavenArtifact
+import de.upb.cs.swt.delphi.crawler.tools.ActorStreamIntegrationSignals.{Ack, StreamCompleted, StreamFailure, StreamInitialized}
 import org.opalj.br.{DeclaredMethod, VirtualDeclaredMethod}
 import org.opalj.br.analyses.Project
 import org.opalj.tac.cg.{CallGraph, XTACallGraphKey}
@@ -39,23 +40,32 @@ class CallGraphActor(storageActor: ActorRef) extends Actor with ActorLogging wit
       } match {
         case Success(theCG) =>
           log.info(s"Successfully processed callgraph for artifact ${artifact.identifier}")
-
           implicit val timeout: Timeout = Timeout(15.minutes)
           Await.result(storageActor ? (artifact, theCG, libProject), timeout.duration) match {
             case Success(storageResponse) =>
               log.info(s"Successfully stored CG information for ${artifact.identifier}")
-              sender() ! Success((artifact, libProject))
+              sender() ! Ack //Success((artifact, libProject))
             case Failure(ex) =>
-              log.error("Invalid response from storage actor")
-              sender() ! Failure(ex)
+              log.error("Invalid response from storage actor", ex)
+              sender() ! Ack //Failure(ex)
             case _ =>
               log.error("Invalid response from storage actor")
-              sender() ! Failure(new Exception())
+              sender() ! Ack //Failure(new Exception())
           }
         case Failure(ex) =>
           log.error(s"Failed to generate call graph for artifact ${artifact.identifier}", ex)
-          sender() ! Failure(ex)
+          sender() ! Ack //Failure(ex)
       }
+
+    case StreamInitialized =>
+      log.info(s"Stream initialized!")
+      sender() ! Ack
+    case StreamCompleted =>
+      log.info(s"Stream completed!")
+    case StreamFailure(ex) =>
+      log.error(ex, s"Stream failed!")
+    case a@_ =>
+      log.warning("Unexpected input " + a)
   }
 
 }
