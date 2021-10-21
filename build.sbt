@@ -56,7 +56,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies += "org.json4s" %% "json4s-jackson" % "4.0.3"
 
-libraryDependencies += "com.pauldijou" %% "jwt-core" % "1.0.0"
+libraryDependencies += "com.pauldijou" %% "jwt-core" % "5.0.0"
 
 libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3" % Runtime
 
@@ -89,6 +89,9 @@ libraryDependencies ++= Seq (
 libraryDependencies += "com.squareup.tools.build" % "maven-archeologist" % "0.0.10"
 
 libraryDependencies += "org.apache.maven.indexer" % "indexer-reader" % "6.0.0"
-libraryDependencies += "org.apache.maven.indexer" % "indexer-core" % "6.0.0"
+libraryDependencies += "org.apache.maven.indexer" % "indexer-core" % "6.0.0" exclude("com.google.guava", "guava")
 
 libraryDependencies += "de.upb.cs.swt.delphi" %% "delphi-core" % "0.9.2"
+
+// Pinning secure version of guava, otherwise indexer-core:6.0.0 includes a vulnerable one
+libraryDependencies += "com.google.guava" % "guava" % "24.1.1-jre"
