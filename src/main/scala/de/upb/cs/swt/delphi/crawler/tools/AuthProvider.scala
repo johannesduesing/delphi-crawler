@@ -13,23 +13,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+package de.upb.cs.swt.delphi.crawler.tools
 
-package de.upb.cs.swt.delphi.crawler.processing
-import java.net.URL
-import java.util.jar.JarInputStream
+import de.upb.cs.swt.delphi.crawler.Configuration
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
 
-import de.upb.cs.swt.delphi.crawler.preprocessing.MavenArtifact
-import de.upb.cs.swt.delphi.crawler.tools.ClassStreamReader
-import org.opalj.br.analyses.Project
+object AuthProvider {
 
-import scala.util.Try
+  def generateJwt(validFor: Long = 1, useGenericName: Boolean = false)(implicit configuration: Configuration): String = {
+    val claim = JwtClaim()
+      .issuedNow
+      .expiresIn(validFor * 60)
+      .startsNow
+      .+("user_id", if (useGenericName) configuration.instanceName else s"${configuration.instanceId.get}")
+      .+("user_type", "Component")
 
-trait OPALFunctionality {
 
-  def reifyProject(m: MavenArtifact): Project[URL] = {
-    val project = new ClassStreamReader {}.createProject(m.identifier.toJarLocation.toURL,
-      new JarInputStream(m.jarFile.is))
-    Try(m.jarFile.is.close())
-    project
+    Jwt.encode(claim, configuration.jwtSecretKey, JwtAlgorithm.HS256)
   }
+
 }

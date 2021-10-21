@@ -16,6 +16,8 @@
 
 package de.upb.cs.swt.delphi.crawler.processing
 
+import de.upb.cs.swt.delphi.crawler.processing.HermesAnalyzer.initialize
+
 import java.io._
 import java.net.URL
 import org.opalj.br.analyses.Project
@@ -31,6 +33,7 @@ import scala.collection.JavaConverters.asScalaIteratorConverter
   */
 class HermesAnalyzer(project: Project[URL]) extends HermesCore {
   initialize(HermesAnalyzer.temporaryConfigFile())
+
 
   override def updateProjectData(f: => Unit): Unit = HermesAnalyzer.synchronized {
     f
@@ -99,7 +102,7 @@ class HermesAnalyzer(project: Project[URL]) extends HermesCore {
 object HermesAnalyzer extends HermesCore {
 
   def setConfig(): Unit = {
-    var internalConfigurationFile = temporaryConfigFile
+    var internalConfigurationFile = temporaryConfigFile()
     initialize(internalConfigurationFile)
   }
 
